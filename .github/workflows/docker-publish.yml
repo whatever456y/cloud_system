@@ -57,3 +57,47 @@ jobs:
       push: true
       # 注意：镜像名称必须全部⼩写 
       tags: ghcr.io/${{ github.repository_owner }}/ci-cd-practice:latest
+
+  notify:
+    needs: [test, build-and-push] 
+    runs-on: ubuntu-latest
+    # 即使前面的作业失败，这个作业也运行
+    if: always()
+    steps:
+      - name: Send Discord notification
+        uses: Ilshidur/action-discord@master
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        with:
+          args: |
+            {
+              "username": "GitHub Actions Bot",
+              "avatar_url": "https://github.githubassets.com/images/modules/logos_page/Octocat.png",
+              "content": "",
+              "embeds": [{
+                "title": "Docker Build and Push #${{ github.run_number }}",
+                "description": "Workflow **${{ github.workflow }}** triggered by **${{ github.actor }}**",
+                "color": ${{ job.status == 'success' && '3066993' || '15158332' }},
+                "fields": [
+                  {
+                    "name": "Status",
+                    "value": "${{ job.status }}",
+                    "inline": true
+                  },
+                  {
+                    "name": "Branch",
+                    "value": "${{ github.ref_name }}",
+                    "inline": true
+                  },
+                  {
+                    "name": "Commit",
+                    "value": "[${{ github.sha }}](https://github.com/${{ github.repository }}/commit/${{ github.sha }})",
+                    "inline": false
+                  }
+                ],
+                "timestamp": "${{ github.event.head_commit.timestamp }}",
+                "footer": {
+                  "text": "Repository: ${{ github.repository }}"
+                }
+              }]
+            }
